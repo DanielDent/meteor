@@ -1005,7 +1005,6 @@ var toPosixPath = function (p) {
 };
 
 var toDosPath = function (p) {
-  p = p.replace(/\//g, '\\');
   if (p[0] === '/') {
     if (! /^\/[A-Z]\//.test(p))
       throw new Error("Surprising path: " + p);
@@ -1013,6 +1012,8 @@ var toDosPath = function (p) {
     p[0] = p[1];
     p[1] = '/';
   }
+
+  p = p.replace(/\//g, '\\');
 
   return p;
 };
