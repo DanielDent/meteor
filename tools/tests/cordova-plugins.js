@@ -2,7 +2,6 @@ var selftest = require('../selftest.js');
 var Sandbox = selftest.Sandbox;
 var files = require('../files.js');
 var _ = require('underscore');
-var path = require('path');
 
 // Copy the contents of one file to another.  In these series of tests, we often
 // want to switch contents of package.js files. It is more legible to copy in
@@ -19,7 +18,7 @@ var copyFile = function(from, to, sand) {
 };
 
 
-var localCordova = path.join(files.getCurrentToolsDir(), "tools",
+var localCordova = files.pathJoin(files.getCurrentToolsDir(), "tools",
   "cordova-scripts", "cordova.sh");
 // Given a sandbox, that has the app as its currend cwd, read the versions file
 // and check that it contains the plugins that we are looking for. We don't
@@ -31,7 +30,7 @@ var localCordova = path.join(files.getCurrentToolsDir(), "tools",
 var checkCordovaPlugins = selftest.markStack(function(sand, plugins) {
   var lines = selftest.execFileSync(localCordova, ['plugins'],
     {
-      cwd: path.join(sand.cwd, '.meteor', 'local', 'cordova-build'),
+      cwd: files.pathJoin(sand.cwd, '.meteor', 'local', 'cordova-build'),
       env: {
         METEOR_WAREHOUSE_DIR: sand.warehouse
       }
@@ -305,9 +304,9 @@ selftest.define("meteor exits when cordova platforms change", ["slow"], function
   run.waitSecs(30);
   run.match("Started your app");
 
-  var platforms = s.read(path.join(".meteor", "platforms"));
+  var platforms = s.read(files.pathJoin(".meteor", "platforms"));
   platforms = platforms + "\nandroid";
-  s.write(path.join(".meteor", "platforms"), platforms);
+  s.write(files.pathJoin(".meteor", "platforms"), platforms);
 
   run.waitSecs(60);
   run.matchErr("Your app's platforms have changed");
@@ -319,9 +318,9 @@ selftest.define("meteor exits when cordova platforms change", ["slow"], function
   run.waitSecs(30);
   run.match("Started your app");
 
-  platforms = s.read(path.join(".meteor", "platforms"));
+  platforms = s.read(files.pathJoin(".meteor", "platforms"));
   platforms = platforms.replace(/android/g, "");
-  s.write(path.join(".meteor", "platforms"), platforms);
+  s.write(files.pathJoin(".meteor", "platforms"), platforms);
 
   run.waitSecs(60);
   run.matchErr("Your app's platforms have changed");
