@@ -1131,6 +1131,7 @@ if (process.platform === "win32") {
     if (_.isString(fileData)) {
       return fileData.replace(new RegExp(os.EOL, "g"), "\n");
     }
+    return fileData;
   };
 } else {
   files.writeFile = writeFile;
