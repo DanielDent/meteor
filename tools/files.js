@@ -983,6 +983,14 @@ _.extend(files.KeyValueFile.prototype, {
   }
 });
 
+files.getHomeDir = function () {
+  return process.env.HOME || process.env.LOCALAPPDATA || process.env.APPDATA;
+};
+
+files.linkToMeteorScript = function (scriptLocation, linkLocation) {
+  files.symlinkOverSync(scriptLocation, linkLocation);
+};
+
 /////// Below here, functions have been corrected for slashes
 
 var convertToOSPath = function (standardPath) {
