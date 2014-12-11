@@ -1,5 +1,4 @@
 var _ = require('underscore');
-var path = require('path');
 var assert = require('assert');
 var Fiber = require('fibers');
 var files = require('../../files.js');
@@ -18,7 +17,7 @@ var tmpDir = function () {
 
 var makeProjectContext = function (appName) {
   var projectDir = files.mkdtemp("test-bundler-assets");
-  files.cp_r(path.join(__dirname, appName), projectDir);
+  files.cp_r(files.pathJoin(__dirname, appName), projectDir);
   var projectContext = new projectContextModule.ProjectContext({
     projectDir: projectDir
   });
@@ -41,7 +40,7 @@ var doOrThrow = function (f) {
 };
 
 var getTestPackageDir = function (projectContext) {
-  return path.join(projectContext.projectDir, 'packages', 'test-package');
+  return files.pathJoin(projectContext.projectDir, 'packages', 'test-package');
 };
 
 var reloadPackages = function (projectContext) {
@@ -54,7 +53,7 @@ var reloadPackages = function (projectContext) {
 var updateTestPackage = function (projectContext, npmDependencies, options) {
   options = options || {};
   files.writeFile(
-    path.join(getTestPackageDir(projectContext), 'package.js'),
+    files.pathJoin(getTestPackageDir(projectContext), 'package.js'),
     "Package.describe({version: '1.0.0'});\n"
       + "\n"
       + "Npm.depends(" + JSON.stringify(npmDependencies) + ");"
@@ -75,8 +74,8 @@ var _assertCorrectPackageNpmDir = function (projectContext, deps) {
   // all subdependencies to write these tests, so just transplant that
   // information
   var actualMeteorNpmShrinkwrapDependencies = JSON.parse(
-    files.readFile(path.join(getTestPackageDir(projectContext), ".npm",
-                              "package", "npm-shrinkwrap.json"),
+    files.readFile(files.pathJoin(getTestPackageDir(projectContext), ".npm",
+                                  "package", "npm-shrinkwrap.json"),
                     'utf8')).dependencies;
   var expectedMeteorNpmShrinkwrapDependencies = _.object(_.map(deps, function (version, name) {
     var expected = {};
@@ -101,19 +100,19 @@ var _assertCorrectPackageNpmDir = function (projectContext, deps) {
   }));
 
   var testPackageDir = getTestPackageDir(projectContext);
-  var actual = files.readFile(path.join(testPackageDir, ".npm", "package", "npm-shrinkwrap.json"), 'utf8');
+  var actual = files.readFile(files.pathJoin(testPackageDir, ".npm", "package", "npm-shrinkwrap.json"), 'utf8');
   var expected = JSON.stringify({
     dependencies: expectedMeteorNpmShrinkwrapDependencies}, null, /*indentation, the way npm does it*/2) + '\n';
 
   assert.equal(actual, expected, actual + " == " + expected);
 
   assert.equal(
-    files.readFile(path.join(testPackageDir, ".npm", "package", ".gitignore"), 'utf8'),
+    files.readFile(files.pathJoin(testPackageDir, ".npm", "package", ".gitignore"), 'utf8'),
     "node_modules\n");
-  assert(files.exists(path.join(testPackageDir, ".npm", "package", "README")));
+  assert(files.exists(files.pathJoin(testPackageDir, ".npm", "package", "README")));
 
   // verify the contents of the `node_modules` dir
-  var nodeModulesDir = path.join(testPackageDir, ".npm", "package", "node_modules");
+  var nodeModulesDir = files.pathJoin(testPackageDir, ".npm", "package", "node_modules");
 
   // all expected dependencies are installed correctly, with the correct version
   _.each(deps, function (version, name) {
@@ -122,9 +121,9 @@ var _assertCorrectPackageNpmDir = function (projectContext, deps) {
     if (!/tarball/.test(version)) { // 'version' in package.json from a tarball won't be correct
       assert.equal(JSON.parse(
         files.readFile(
-          path.join(nodeModulesDir, name, "package.json"),
+          files.pathJoin(nodeModulesDir, name, "package.json"),
           'utf8')).version,
-                   version);
+        version);
     }
   });
 
@@ -133,17 +132,17 @@ var _assertCorrectPackageNpmDir = function (projectContext, deps) {
   _.each(
     files.readdir(nodeModulesDir),
     function (installedNodeModule) {
-      if (files.exists(path.join(nodeModulesDir, installedNodeModule, "package.json")))
+      if (files.exists(files.pathJoin(nodeModulesDir, installedNodeModule, "package.json")))
         assert(installedNodeModule in deps);
     });
 };
 
 var _assertCorrectBundleNpmContents = function (bundleDir, deps) {
   // sanity check -- main.js has expected contents.
-  assert.strictEqual(files.readFile(path.join(bundleDir, "main.js"), "utf8"),
+  assert.strictEqual(files.readFile(files.pathJoin(bundleDir, "main.js"), "utf8"),
                      bundler._mainJsContents);
 
-  var bundledPackageNodeModulesDir = path.join(
+  var bundledPackageNodeModulesDir = files.pathJoin(
     bundleDir, 'programs', 'server', 'npm', 'test-package', 'node_modules');
 
   // bundle actually has the npm modules
@@ -152,7 +151,7 @@ var _assertCorrectBundleNpmContents = function (bundleDir, deps) {
 
     if (!/tarball/.test(version)) { // 'version' in package.json from a tarball won't be correct
       assert.equal(JSON.parse(
-        files.readFile(path.join(bundledPackageNodeModulesDir, name, 'package.json'), 'utf8'))
+        files.readFile(files.pathJoin(bundledPackageNodeModulesDir, name, 'package.json'), 'utf8'))
                    .version,
                    version);
     }
@@ -162,8 +161,8 @@ var _assertCorrectBundleNpmContents = function (bundleDir, deps) {
 var looksInstalled = function (nodeModulesDir, name) {
   // All of the packages in this test have one of these two files, so presumably
   // if one of these files is here we have correctly installed the package.
-  return files.exists(path.join(nodeModulesDir, name, 'README.md')) ||
-    files.exists(path.join(nodeModulesDir, name, 'LICENSE'));
+  return files.exists(files.pathJoin(nodeModulesDir, name, 'README.md')) ||
+    files.exists(files.pathJoin(nodeModulesDir, name, 'LICENSE'));
 };
 
 ///
@@ -210,13 +209,13 @@ var runTest = function () {
     var tmpOutputDir = tmpDir();
 
     // rm -rf .npm
-    var nodeModulesDir = path.join(testPackageDir, ".npm",
-                                   "package", "node_modules");
+    var nodeModulesDir = files.pathJoin(testPackageDir, ".npm",
+                                        "package", "node_modules");
     assert(files.exists(nodeModulesDir));
     files.rm_recursive(nodeModulesDir);
     // We also have to change something in the package or else we won't rebuild
     // at all.
-    files.appendFile(path.join(testPackageDir, 'package.js'), '\n');
+    files.appendFile(files.pathJoin(testPackageDir, 'package.js'), '\n');
     reloadPackages(projectContext);
 
     // while bundling, verify that we don't call `npm install
@@ -262,13 +261,13 @@ var runTest = function () {
     var tmpOutputDir = tmpDir();
 
     // rm -rf .npm/package/node_modules/mime
-    var nodeModulesMimeDir = path.join(
+    var nodeModulesMimeDir = files.pathJoin(
       testPackageDir, ".npm", "package", "node_modules", "mime");
-    assert(files.exists(path.join(nodeModulesMimeDir)));
+    assert(files.exists(files.pathJoin(nodeModulesMimeDir)));
     files.rm_recursive(nodeModulesMimeDir);
     // We also have to change something in the package or we won't rebuild at
     // all.
-    files.appendFile(path.join(testPackageDir, 'package.js'), '\n');
+    files.appendFile(files.pathJoin(testPackageDir, 'package.js'), '\n');
     reloadPackages(projectContext);
 
     var result = bundler.bundle({
@@ -344,8 +343,8 @@ var runTest = function () {
     // Check that a string introduced by our fork is in the source.
     assert(/clientMaxAge = 604800000/.test(
       files.readFile(
-        path.join(testPackageDir, ".npm", "package", "node_modules",
-                  "gzippo", "lib", "staticGzip.js"), "utf8")));
+        files.pathJoin(testPackageDir, ".npm", "package", "node_modules",
+                       "gzippo", "lib", "staticGzip.js"), "utf8")));
   });
 };
 

@@ -1,5 +1,4 @@
 var _ = require('underscore');
-var path = require('path');
 var assert = require('assert');
 var Future = require('fibers/future');
 var files = require('../../files.js');
@@ -17,7 +16,7 @@ var tmpDir = function () {
 
 var makeProjectContext = function (appName) {
   var projectDir = files.mkdtemp("test-bundler-assets");
-  files.cp_r(path.join(__dirname, appName), projectDir);
+  files.cp_r(files.pathJoin(__dirname, appName), projectDir);
   var projectContext = new projectContextModule.ProjectContext({
     projectDir: projectDir
   });
@@ -58,7 +57,7 @@ var runTest = function () {
     });
     var clientManifest = JSON.parse(
       files.readFile(
-        path.join(tmpOutputDir, "programs", "web.browser", "program.json")
+        files.pathJoin(tmpOutputDir, "programs", "web.browser", "program.json")
       )
     );
 
@@ -69,7 +68,7 @@ var runTest = function () {
         return m.url === file[0];
       });
       assert(manifestItem);
-      var diskPath = path.join(tmpOutputDir, "programs", "web.browser",
+      var diskPath = files.pathJoin(tmpOutputDir, "programs", "web.browser",
                                manifestItem.path);
       assert(files.exists(diskPath));
       assert.strictEqual(files.readFile(diskPath, "utf8"), file[1]);
@@ -89,7 +88,7 @@ var runTest = function () {
 
     var serverManifest = JSON.parse(
       files.readFile(
-        path.join(tmpOutputDir, "programs", "server",
+        files.pathJoin(tmpOutputDir, "programs", "server",
                   "program.json")
       )
     );
@@ -99,15 +98,15 @@ var runTest = function () {
     var unregisteredExtensionPath;
     _.each(serverManifest.load, function (item) {
       if (item.path === "packages/test-package.js") {
-        packageTxtPath = path.join(
+        packageTxtPath = files.pathJoin(
           tmpOutputDir, "programs", "server", item.assets['test-package.txt']);
-        unregisteredExtensionPath = path.join(
+        unregisteredExtensionPath = files.pathJoin(
           tmpOutputDir, "programs", "server", item.assets["test.notregistered"]);
       }
       if (item.path === "app/test.js") {
-        testTxtPath = path.join(
+        testTxtPath = files.pathJoin(
           tmpOutputDir, "programs", "server", item.assets['test.txt']);
-        nestedTxtPath = path.join(
+        nestedTxtPath = files.pathJoin(
           tmpOutputDir, "programs", "server", item.assets["nested/test.txt"]);
       }
     });
