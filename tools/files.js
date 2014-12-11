@@ -999,9 +999,33 @@ _.extend(files.KeyValueFile.prototype, {
 
 /////// Below here, functions have been corrected for slashes
 
+var toPosixPath = function (p) {
+  p = p.replace(/\\/g, '/');
+  if (p[1] === ':') {
+    // transform "C:/bla/bla" to "/C/bla/bla"
+    p[1] = p[0];
+    p[0] = '/';
+  }
+
+  return p;
+};
+
+var toDosPath = function (p) {
+  p = p.replace(/\//g, '\\');
+  if (p[0] === '/') {
+    if (! /^\/[A-Z]\//.test(p))
+      throw new Error("Surprising path: " + p);
+    // transform a previously windows path back
+    p[0] = p[1];
+    p[1] = '/';
+  }
+
+  return p;
+};
+
 var convertToOSPath = function (standardPath) {
   if (process.platform === "win32") {
-    return standardPath.replace(/\\/g, path.sep);
+    return toDosPath(standardPath);
   }
 
   return standardPath;
@@ -1009,7 +1033,7 @@ var convertToOSPath = function (standardPath) {
 
 var convertToStandardPath = function (osPath) {
   if (process.platform === "win32") {
-    return osPath.replace(/\//g, "/");
+    return toPosixPath(osPath);
   }
 
   return osPath;
@@ -1107,7 +1131,7 @@ files.open = wrapFsFunc(fs.open, [0]);
 
 // XXX this doesn't give you the second argument to the callback
 files.read = wrapFsFunc(fs.read, []);
-files.write = wrapFsFunc(fs.read, []);
+files.write = wrapFsFunc(fs.write, []);
 
 files.close = wrapFsFunc(fs.close, []);
 
@@ -1127,29 +1151,6 @@ var wrapPathFunction = function (f) {
   };
 };
 
-var toPosixPath = function (p) {
-  p = p.replace(/\\/g, '/');
-  if (p[1] === ':') {
-    // transform "C:/bla/bla" to "/C/bla/bla"
-    p[1] = p[0];
-    p[0] = '/';
-  }
-
-  return p;
-};
-
-var toDosPath = function (p) {
-  p = p.replace(/\//g, '\\');
-  if (p[0] === '/') {
-    if (! /^\/[A-Z]\//.test(p))
-      throw new Error("Surprising path: " + p);
-    // transform a previously windows path back
-    p[0] = p[1];
-    p[1] = '/';
-  }
-
-  return p;
-};
 
 files.pathJoin = wrapPathFunction(path.join);
 files.pathNormalize = wrapPathFunction(path.normalize);
