@@ -412,11 +412,7 @@ _.extend(Watcher.prototype, {
     var onWatchEvent = self._makeWatchEventCallback(absPath);
 
     try {
-      // In principle, all this logic for watching files should continue
-      // to work perfectly well if we substitute fs.watch for
-      // pathwatcher.watch, but that will probably have to wait until we
-      // upgrade Node to v0.11.x, so that fs.watch is more reliable.
-      entry.watcher = require('pathwatcher').watch(absPath, onWatchEvent);
+      entry.watcher = watch(absPath, onWatchEvent);
 
     } catch (err) {
       if (err.code === "ENOENT" || // For fs.watch.
@@ -621,6 +617,77 @@ _.extend(Watcher.prototype, {
     });
     self.watches = {};
   }
+});
+
+function watch(file, callback) {
+  var pathwatcher = pathwatcherFuture.wait();
+  if (pathwatcher) {
+    // In principle, all this logic for watching files should continue to
+    // work perfectly if we substitute fs.watch for pathwatcher.watch, but
+    // that will probably have to wait until we upgrade Node to v0.11.x,
+    // so that fs.watch is more reliable.
+    return pathwatcher.watch(file, callback);
+
+  } else {
+    if (! watch.warnedAboutFallback) {
+      watch.warnedAboutFallback = true;
+      require("./console.js").Console.warn(
+        "Falling back to fs.watchFile instead of pathwatcher.watch: " +
+          err.message
+      );
+    }
+
+    fs.watchFile(file, { interval: 500 }, callback);
+
+    return {
+      // Return an object whose interface is consistent with what
+      // pathwatcher.watch returns.
+      close: function() {
+        fs.unwatchFile(file, callback);
+      }
+    };
+  }
+}
+
+// The pathwatcher library does not work on all platforms and file systems
+// (notably, network file systems), so we do a little feature detection to
+// see if we can use it.
+var pathwatcherFuture = new Future;
+
+// There's a benign circular dependency between watch.js and files.js that
+// causes files.mkdtemp not to be defined yet, so delay checkPathwatcher
+// by a tick.
+process.nextTick(function checkPathwatcher() {
+  var files = require("./files.js");
+  var dir = files.mkdtemp("pathwatcher-");
+  var pathwatcher = require("pathwatcher");
+
+  // Watch the temporary directory using pathwatcher.watch.
+  var watcher = pathwatcher.watch(dir, function() {
+    if (watcher) {
+      watcher.close();
+      watcher = null;
+      pathwatcherFuture.return(pathwatcher);
+    }
+  });
+
+  // Create a new file to trigger a change event (hopefully).
+  fs.writeFile(path.join(dir, "canary"), "ok", function(err) {
+    if (err && watcher) {
+      watcher.close();
+      watcher = null;
+      pathwatcherFuture.throw(err);
+    }
+  });
+
+  // Set a time limit of 200ms for the change event.
+  setTimeout(function() {
+    if (watcher) {
+      watcher.close();
+      watcher = null;
+      pathwatcherFuture.return(null);
+    }
+  }, 200);
 });
 
 // Given a WatchSet, returns true if it currently describes the state of the
