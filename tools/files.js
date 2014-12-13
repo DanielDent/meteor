@@ -9,6 +9,7 @@ var path = require('path');
 var os = require('os');
 var util = require('util');
 var _ = require('underscore');
+var pathwatcher = require('pathwatcher');
 var rimraf = require('./rimraf');
 var Future = require('fibers/future');
 var sourcemap = require('source-map');
@@ -1180,6 +1181,15 @@ files.readdir = wrapFsFunc(fs.readdir, [0], {
   }
 });
 
+// blocking equivalents
+files.readdirSync = function (p) {
+  return _.map(fs.readdirSync(convertToOSPath(p)), convertToStandardPath);
+};
+
+files.statSync = function (p) {
+  return fs.statSync(convertToOSPath(p));
+};
+
 // These don't need to be Fiberized
 files.createReadStream = function () {
   arguments[0] = convertToOSPath(arguments[0]);
@@ -1203,6 +1213,26 @@ files.close = wrapFsFunc(fs.close, []);
 files.symlink = wrapFsFunc(fs.symlink, [0, 1]);
 files.readlink = wrapFsFunc(fs.readlink, [0]);
 
+files.watchFile = function (/* args */) {
+  var args = _.toArray(arguments);
+  var cb = args.pop();
+  args.push(function (curr, prev) {
+    Fiber(function () {
+      cb(curr, prev);
+    }).run();
+  });
+  fs.watchFile.apply(fs, args);
+};
+
+files.pathwatcher = {
+  watch: function (absPath, listener) {
+    var p = convertToOSPath(absPath);
+    return pathwatcher.watch(p, listener);
+  },
+  close: function () {
+    pathwatcher.close();
+  }
+};
 
 // wrappings for path functions those always run as they were on unix
 var wrapPathFunction = function (f, partialPaths) {

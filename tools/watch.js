@@ -1,4 +1,3 @@
-var fs = require("fs");
 var files = require('./files.js');
 var _ = require('underscore');
 var Future = require('fibers/future');
@@ -296,7 +295,7 @@ var Watcher = function (options) {
     //   watcher: <object returned by pathwatcher.watch> | null,
     //   // Undefined until we stat the file for the first time, then null
     //   // if the file is observed to be missing.
-    //   lastStat: <object returned by fs.statSync> | null | undefined
+    //   lastStat: <object returned by files.stat> | null | undefined
     // }
   };
 
@@ -395,11 +394,12 @@ _.extend(Watcher.prototype, {
   _watchFileOrDirectory: function (absPath) {
     var self = this;
 
+    console.log('START watching ', absPath)
     if (! _.has(self.watches, absPath)) {
       self.watches[absPath] = {
         watcher: null,
         // Initially undefined (instead of null) to indicate we have never
-        // called fs.stat on this file before.
+        // called files.stat on this file before.
         lastStat: undefined
       };
     }
@@ -417,7 +417,7 @@ _.extend(Watcher.prototype, {
       // to work perfectly well if we substitute fs.watch for
       // pathwatcher.watch, but that will probably have to wait until we
       // upgrade Node to v0.11.x, so that fs.watch is more reliable.
-      entry.watcher = require('pathwatcher').watch(absPath, onWatchEvent);
+      entry.watcher = files.pathwatcher.watch(absPath, onWatchEvent);
 
     } catch (err) {
       if (err.code === "ENOENT" || // For fs.watch.
@@ -431,6 +431,7 @@ _.extend(Watcher.prototype, {
         throw err;
       }
     }
+    console.log('STARTED watching', absPath)
 
     if (entry.watcher) {
       // If we successfully created the watcher, invoke the callback
@@ -455,6 +456,8 @@ _.extend(Watcher.prototype, {
       if (self.stopped) {
         return;
       }
+
+      console.log('changed?', absPath)
 
       // This helper method will call self._fire() if the old and new stat
       // objects have different types (missing, file, or directory), so we
@@ -674,7 +677,7 @@ var readAndWatchFile = function (watchSet, absPath) {
 
 var readFile = function (absPath) {
   try {
-    return fs.readFileSync(absPath);
+    return files.readFile(absPath);
   } catch (e) {
     // Rethrow most errors.
     if (!e || (e.code !== 'ENOENT' && e.code !== 'EISDIR'))
@@ -697,16 +700,16 @@ var sha1 = function (contents) {
 // the point release in which we are adding these functions.
 var readdirSyncOrYield = function (path, yielding) {
   if (yielding) {
-    return Future.wrap(fs.readdir)(path).wait();
+    return files.readdir(path);
   } else {
-    return fs.readdirSync(path);
+    return files.readdirSync(path);
   }
 };
 var statSyncOrYield = function (path, yielding) {
   if (yielding) {
-    return Future.wrap(fs.stat)(path).wait();
+    return files.stat(path);
   } else {
-    return fs.statSync(path);
+    return files.statSync(path);
   }
 };
 
