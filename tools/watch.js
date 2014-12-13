@@ -394,7 +394,6 @@ _.extend(Watcher.prototype, {
   _watchFileOrDirectory: function (absPath) {
     var self = this;
 
-    console.log('START watching ', absPath)
     if (! _.has(self.watches, absPath)) {
       self.watches[absPath] = {
         watcher: null,
@@ -431,7 +430,6 @@ _.extend(Watcher.prototype, {
         throw err;
       }
     }
-    console.log('STARTED watching', absPath)
 
     if (entry.watcher) {
       // If we successfully created the watcher, invoke the callback
@@ -456,8 +454,6 @@ _.extend(Watcher.prototype, {
       if (self.stopped) {
         return;
       }
-
-      console.log('changed?', absPath)
 
       // This helper method will call self._fire() if the old and new stat
       // objects have different types (missing, file, or directory), so we
